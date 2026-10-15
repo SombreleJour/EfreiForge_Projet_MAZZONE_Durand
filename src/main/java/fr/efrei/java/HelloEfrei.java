@@ -12,12 +12,14 @@ import java.util.OptionalInt;
 import java.util.Scanner;
 
 /**
- * Point d'entrée de l'application : interface console de l'annuaire des collaborateurs.
+ * Point d'entrée de l'application : interface console de l'annuaire des collaborateurs
+ * et de la gestion des équipes.
  *
  * Cette classe ne contient aucun code JPA métier : elle crée la fabrique, valide le FORMAT
- * des saisies (nombre, identifiant au format C001...), puis délègue à Annuaire.
- * Les règles métier sont protégées par le domaine (Collaborateur, Annuaire) et signalées
- * par des exceptions que l'on intercepte ici pour afficher un message à l'utilisateur.
+ * des saisies (nombre, identifiant au format C001...), puis délègue à Annuaire (collaborateurs)
+ * ou à GestionEquipes (équipes et affectations).
+ * Les règles métier sont protégées par le domaine (Collaborateur, Equipe) et par les services,
+ * qui les signalent par des exceptions que l'on intercepte ici pour afficher un message.
  */
 public class HelloEfrei {
 
@@ -34,8 +36,9 @@ public class HelloEfrei {
 
         try (Scanner scanner = new Scanner(System.in)) {
             Annuaire annuaire = new Annuaire(fabrique);
-            chargerDonneesDemo(annuaire);
-            boucleMenu(annuaire, scanner);
+            GestionEquipes equipes = new GestionEquipes(fabrique);
+            avertirSiBaseVide(annuaire);
+            boucleMenu(annuaire, equipes, scanner);
         } catch (PersistenceException e) {
             logger.error("Erreur d'accès à la base de données au démarrage", e);
             System.out.println("Erreur d'accès à la base de données. Consultez les logs pour le détail.");
@@ -57,31 +60,28 @@ public class HelloEfrei {
         } catch (PersistenceException e) {
             logger.error("Impossible de créer l'EntityManagerFactory", e);
             System.out.println("Impossible de se connecter à la base de données. "
-                    + "Vérifiez que MySQL est démarré dans XAMPP (port 3306).");
+                    + "Vérifiez que MySQL est démarré dans XAMPP (port 3306) "
+                    + "et que le script sql/efreiforge.sql a été importé.");
             return null;
         }
     }
 
-    /** Insère les données de démonstration uniquement si la base est vide. */
-    private static void chargerDonneesDemo(Annuaire annuaire) {
-        if (annuaire.nombre() > 0) {
-            return;
+    /**
+     * Les données de démonstration viennent du script SQL (sql/efreiforge.sql) :
+     * l'application n'en insère plus elle-même, pour n'avoir qu'une seule source de données.
+     */
+    private static void avertirSiBaseVide(Annuaire annuaire) {
+        if (annuaire.nombre() == 0) {
+            System.out.println("La base ne contient aucun collaborateur. "
+                    + "Importez le script sql/efreiforge.sql (voir JOURNAL.md).");
         }
-        for (Collaborateur collaborateur : DonneesDemo.creerCollaborateurs()) {
-            try {
-                annuaire.ajouter(collaborateur);
-            } catch (CollaborateurDejaExistantException e) {
-                System.out.println("Le collaborateur " + e.identifiant() + " existe déjà : ignoré.");
-            }
-        }
-        System.out.println("Données de démonstration chargées.");
     }
 
     // =========================================================================
     // Menu
     // =========================================================================
 
-    private static void boucleMenu(Annuaire annuaire, Scanner scanner) {
+    private static void boucleMenu(Annuaire annuaire, GestionEquipes equipes, Scanner scanner) {
         int choix = -1;
 
         while (choix != 0) {
@@ -99,7 +99,14 @@ public class HelloEfrei {
             choix = saisie.getAsInt();
 
             try {
-                executerChoix(choix, annuaire, scanner);
+                executerChoix(choix, annuaire, equipes, scanner);
+            } catch (EquipeDejaExistanteException | EquipeIntrouvableException | EquipeNonVideException
+                     | AffectationRefuseeException | CollaborateurIntrouvableException e) {
+                // Règle métier violée : l'opération est refusée et les données ne changent pas
+                System.out.println("Erreur : " + e.getMessage());
+            } catch (IllegalArgumentException e) {
+                // Valeur refusée par le domaine (ex. : nom d'équipe vide)
+                System.out.println("Erreur : " + e.getMessage());
             } catch (PersistenceException e) {
                 logger.error("Erreur d'accès à la base de données", e);
                 System.out.println("Erreur d'accès à la base de données. Consultez les logs pour le détail.");
@@ -107,7 +114,7 @@ public class HelloEfrei {
         }
     }
 
-    private static void executerChoix(int choix, Annuaire annuaire, Scanner scanner) {
+    private static void executerChoix(int choix, Annuaire annuaire, GestionEquipes equipes, Scanner scanner) {
         switch (choix) {
             case 0 -> System.out.println("À bientôt !");
             case 1 -> afficherListe(annuaire.tous());
@@ -120,9 +127,21 @@ public class HelloEfrei {
             case 8 -> afficherFiche(annuaire, scanner);
             case 9 -> augmenterSalaire(annuaire, scanner);
             case 10 -> ajouterCollaborateur(annuaire, scanner);
-            default -> System.out.println("Option invalide. Choisissez entre 0 et 10.");
+            case 11 -> creerEquipe(equipes, scanner);
+            case 12 -> afficherEquipes(equipes);
+            case 13 -> affecterCollaborateur(equipes, scanner);
+            case 14 -> retirerCollaborateur(equipes, scanner);
+            case 15 -> afficherMembres(equipes, scanner);
+            case 16 -> renommerEquipe(equipes, scanner);
+            case 17 -> supprimerEquipe(equipes, scanner);
+            case 18 -> afficherSansEquipe(equipes);
+            default -> System.out.println("Option invalide. Choisissez entre 0 et 18.");
         }
     }
+
+    // =========================================================================
+    // Collaborateurs (menu 1 à 10)
+    // =========================================================================
 
     private static void rechercherParNom(Annuaire annuaire, Scanner scanner) {
         String fragment = lireTexte(scanner, "Fragment de nom : ");
@@ -221,6 +240,89 @@ public class HelloEfrei {
     }
 
     // =========================================================================
+    // Équipes (menu 11 à 18)
+    //
+    // Chaque méthode ne fait que : lire les saisies, appeler GestionEquipes, afficher le résultat.
+    // Les refus (exceptions) remontent jusqu'à boucleMenu, qui affiche le message.
+    // Quand un nom d'équipe est demandé, la liste des équipes existantes est affichée d'abord.
+    // =========================================================================
+
+    private static void creerEquipe(GestionEquipes equipes, Scanner scanner) {
+        afficherEquipes(equipes);
+        // lireLigne (et non lireTexte) : un nom vide doit atteindre le domaine, qui le refuse
+        String nom = lireLigne(scanner, "Nom de la nouvelle équipe : ");
+        Equipe creee = equipes.creer(nom);
+        System.out.println("Équipe « " + creee.getNom() + " » créée.");
+    }
+
+    private static void afficherEquipes(GestionEquipes equipes) {
+        List<Equipe> liste = equipes.lister();
+        if (liste.isEmpty()) {
+            System.out.println("Aucune équipe pour le moment.");
+            return;
+        }
+        System.out.println("Équipes existantes (" + liste.size() + ") :");
+        for (Equipe equipe : liste) {
+            int nombre = equipes.membres(equipe.getNom()).size();
+            System.out.println("  " + equipe.getNom() + " - " + nombre + " collaborateur(s)");
+        }
+    }
+
+    private static void affecterCollaborateur(GestionEquipes equipes, Scanner scanner) {
+        afficherEquipes(equipes);
+        String identifiant = lireTexte(scanner, "Identifiant du collaborateur : ").toUpperCase();
+        String nomEquipe = lireTexte(scanner, "Nom de l'équipe : ");
+        equipes.affecter(identifiant, nomEquipe);
+        System.out.println(identifiant + " a été affecté à l'équipe « " + nomEquipe + " ».");
+    }
+
+    private static void retirerCollaborateur(GestionEquipes equipes, Scanner scanner) {
+        afficherEquipes(equipes);
+        // Le collaborateur ET l'équipe sont demandés : le retrait n'est accepté
+        // que si le collaborateur appartient bien à l'équipe indiquée.
+        String identifiant = lireTexte(scanner, "Identifiant du collaborateur : ").toUpperCase();
+        String nomEquipe = lireTexte(scanner, "Équipe dont le retirer : ");
+        equipes.retirer(identifiant, nomEquipe);
+        System.out.println(identifiant + " a été retiré de l'équipe « " + nomEquipe + " ».");
+    }
+
+    private static void afficherMembres(GestionEquipes equipes, Scanner scanner) {
+        afficherEquipes(equipes);
+        String nomEquipe = lireTexte(scanner, "Nom de l'équipe : ");
+        List<Collaborateur> membres = equipes.membres(nomEquipe);
+        if (membres.isEmpty()) {
+            System.out.println("L'équipe « " + nomEquipe + " » ne contient aucun collaborateur.");
+            return;
+        }
+        afficherCollaborateursEtMetier("Équipe « " + nomEquipe + " »", membres);
+    }
+
+    private static void renommerEquipe(GestionEquipes equipes, Scanner scanner) {
+        afficherEquipes(equipes);
+        String ancienNom = lireTexte(scanner, "Nom de l'équipe à renommer : ");
+        // lireLigne : un nouveau nom vide doit atteindre le domaine, qui le refuse
+        String nouveauNom = lireLigne(scanner, "Nouveau nom : ");
+        equipes.renommer(ancienNom, nouveauNom);
+        System.out.println("Équipe « " + ancienNom + " » renommée en « " + nouveauNom.trim() + " ».");
+    }
+
+    private static void supprimerEquipe(GestionEquipes equipes, Scanner scanner) {
+        afficherEquipes(equipes);
+        String nomEquipe = lireTexte(scanner, "Nom de l'équipe à supprimer : ");
+        equipes.supprimer(nomEquipe);
+        System.out.println("Équipe « " + nomEquipe + " » supprimée.");
+    }
+
+    private static void afficherSansEquipe(GestionEquipes equipes) {
+        List<Collaborateur> disponibles = equipes.sansEquipe();
+        if (disponibles.isEmpty()) {
+            System.out.println("Tous les collaborateurs ont une équipe.");
+            return;
+        }
+        afficherCollaborateursEtMetier("Collaborateurs sans équipe", disponibles);
+    }
+
+    // =========================================================================
     // Lecture des saisies (toujours par lignes entières : pas de piège de Scanner)
     // =========================================================================
 
@@ -267,6 +369,15 @@ public class HelloEfrei {
         return saisie;
     }
 
+    /**
+     * Lit une ligne telle quelle, sans la redemander si elle est vide.
+     * La validation (nom vide, espaces...) est faite par la règle métier, pas ici.
+     */
+    private static String lireLigne(Scanner scanner, String invite) {
+        System.out.print(invite);
+        return scanner.nextLine();
+    }
+
     // =========================================================================
     // Affichage
     // =========================================================================
@@ -284,6 +395,14 @@ public class HelloEfrei {
         System.out.println("8. Afficher la fiche d'un collaborateur");
         System.out.println("9. Augmenter le salaire d'un collaborateur");
         System.out.println("10. Ajouter un collaborateur");
+        System.out.println("11. Créer une équipe");
+        System.out.println("12. Afficher les équipes");
+        System.out.println("13. Affecter un collaborateur à une équipe");
+        System.out.println("14. Retirer un collaborateur d'une équipe");
+        System.out.println("15. Afficher les collaborateurs d'une équipe");
+        System.out.println("16. Renommer une équipe");
+        System.out.println("17. Supprimer une équipe");
+        System.out.println("18. Afficher les collaborateurs sans équipe");
         System.out.println("0. Quitter");
         System.out.print("Votre choix : ");
     }
@@ -297,6 +416,15 @@ public class HelloEfrei {
             for (Collaborateur c : liste) {
                 System.out.println("  " + c);
             }
+        }
+    }
+
+    /** Affiche une liste de collaborateurs avec leur métier, sous un titre (équipe, disponibles...). */
+    private static void afficherCollaborateursEtMetier(String titre, List<? extends Collaborateur> liste) {
+        System.out.println(titre + " (" + liste.size() + ") :");
+        for (Collaborateur c : liste) {
+            System.out.println("  " + c.getIdentifiant() + " " + c.getPrenom() + " " + c.getNom()
+                    + " - " + c.getMetier());
         }
     }
 }
