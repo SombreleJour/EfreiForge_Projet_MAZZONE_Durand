@@ -1,8 +1,6 @@
 package fr.efrei.java;
 
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.PersistenceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,19 +21,18 @@ import java.util.function.Function;
  *  - un EntityManager est créé PAR OPÉRATION, puis fermé ;
  *  - les écritures sont entourées d'une transaction (begin / commit / rollback).
  */
-public class Annuaire {
+public class Annuaire extends AccesJpa {
 
     private static final Logger logger = LoggerFactory.getLogger(Annuaire.class);
 
-    private final EntityManagerFactory fabrique;
+
 
     /**
      * @param fabrique fabrique JPA, créée et fermée par l'appelant
      */
     public Annuaire(EntityManagerFactory fabrique) {
-        this.fabrique = fabrique;
+        super(fabrique);
     }
-
     // =========================================================================
     // Écriture
     // =========================================================================
@@ -176,47 +173,4 @@ public class Annuaire {
                 .getResultList());
     }
 
-    // =========================================================================
-    // Gestion de l'EntityManager et des transactions (écrite une seule fois)
-    // =========================================================================
-
-    /**
-     * Exécute une lecture : un EntityManager le temps de l'opération, sans transaction.
-     * Les entités renvoyées sont détachées une fois l'EntityManager fermé.
-     */
-    private <T> T lire(Function<EntityManager, T> requete) {
-        try (EntityManager em = fabrique.createEntityManager()) {
-            return requete.apply(em);
-        }
-    }
-
-    /**
-     * Exécute une écriture dans une transaction : commit si tout réussit,
-     * rollback si une exception survient (la base reste alors inchangée).
-     */
-    private <T> T ecrire(Function<EntityManager, T> operation) {
-        try (EntityManager em = fabrique.createEntityManager()) {
-            EntityTransaction transaction = em.getTransaction();
-            transaction.begin();
-            try {
-                T resultat = operation.apply(em);
-                transaction.commit();
-                return resultat;
-            } catch (RuntimeException e) {
-                if (transaction.isActive()) {
-                    transaction.rollback();
-                }
-                logger.debug("Transaction annulée (rollback) : {}", e.getMessage());
-                throw e; // l'exception n'est jamais avalée : l'appelant décide quoi en faire
-            }
-        }
-    }
-
-    /** Variante de ecrire(...) pour une opération qui ne renvoie rien. */
-    private void executer(Consumer<EntityManager> operation) {
-        ecrire(em -> {
-            operation.accept(em);
-            return null;
-        });
-    }
 }
