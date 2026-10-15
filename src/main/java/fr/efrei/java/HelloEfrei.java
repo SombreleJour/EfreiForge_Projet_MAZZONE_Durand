@@ -24,7 +24,7 @@ public class HelloEfrei {
     private static final Logger logger = LoggerFactory.getLogger(HelloEfrei.class);
 
     /** Nom de la persistence unit déclarée dans persistence.xml. */
-    private static final String UNITE_DE_PERSISTANCE = "tp4-unit";
+    private static final String UNITE_DE_PERSISTANCE = "efreiforge-unit";
 
     public static void main(String[] args) {
         EntityManagerFactory fabrique = creerFabrique();
