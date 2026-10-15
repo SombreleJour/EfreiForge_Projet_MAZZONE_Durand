@@ -23,7 +23,7 @@ public class Equipe {
     }
 
     public Equipe(String nom) {
-        this.nom = nom;
+        setNomNormalise(nom);
     }
 
     public Long getId() {
@@ -34,10 +34,16 @@ public class Equipe {
         return nom;
     }
 
-    public void setNom(String nom) {
-        this.nom = nom;
+    public void renommer(String nouveauNom) {
+        setNomNormalise(nouveauNom);
     }
 
+    private void setNomNormalise(String nom) {
+        if (nom == null || nom.trim().isEmpty()) {
+            throw new IllegalArgumentException("Le nom de l'équipe ne peut pas être vide.");
+        }
+        this.nom = nom.trim();
+    }
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

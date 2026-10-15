@@ -91,6 +91,35 @@ public abstract class Collaborateur {
         this.adresse = adresse;
     }
 
+    // --- Gestion de l'équipe ---
+
+    public Equipe getEquipe() {
+        return equipe;
+    }
+
+    public void setEquipe(Equipe equipe) {
+        this.equipe = equipe;
+    }
+
+    /**
+     * Affecte le collaborateur à une nouvelle équipe.
+     */
+    public void affecterA(Equipe nouvelleEquipe) {
+        if (nouvelleEquipe == null) {
+            throw new IllegalArgumentException("L'équipe ne peut pas être nulle.");
+        }
+        this.equipe = nouvelleEquipe;
+    }
+
+    /**
+     * Retire le collaborateur de son équipe actuelle.
+     */
+    public void retirerDe(Equipe equipeActuelle) {
+        if (this.equipe != null && this.equipe.equals(equipeActuelle)) {
+            this.equipe = null;
+        }
+    }
+
     // --- Méthodes métier ---
 
     /**
@@ -119,6 +148,11 @@ public abstract class Collaborateur {
     public void afficherFiche() {
         System.out.printf("[%s] %s %s - Salaire : %.2f €%n", identifiant, prenom, nom, salaire);
         System.out.println("Métier : " + getMetier());
+        if (equipe != null) {
+            System.out.println("Équipe : " + equipe.getNom());
+        } else {
+            System.out.println("Équipe : Aucune");
+        }
         if (adresse != null) {
             System.out.println("Adresse :");
             adresse.afficher();
