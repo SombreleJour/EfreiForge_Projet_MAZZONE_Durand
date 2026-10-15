@@ -6,8 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * Annuaire des collaborateurs : accès à la base via JPA.
@@ -25,14 +23,13 @@ public class Annuaire extends AccesJpa {
 
     private static final Logger logger = LoggerFactory.getLogger(Annuaire.class);
 
-
-
     /**
      * @param fabrique fabrique JPA, créée et fermée par l'appelant
      */
     public Annuaire(EntityManagerFactory fabrique) {
         super(fabrique);
     }
+
     // =========================================================================
     // Écriture
     // =========================================================================
