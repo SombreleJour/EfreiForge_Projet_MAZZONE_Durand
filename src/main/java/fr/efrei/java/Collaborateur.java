@@ -1,16 +1,6 @@
 package fr.efrei.java;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorColumn;
-import jakarta.persistence.DiscriminatorType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Inheritance;
-import jakarta.persistence.InheritanceType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.util.Objects;
 
@@ -34,6 +24,10 @@ public abstract class Collaborateur {
     @Id
     @Column(length = 10)
     private String identifiant;
+
+    @ManyToOne
+    @JoinColumn(name = "equipe_id")
+    private Equipe equipe;
 
     @Column(length = 50, nullable = false)
     private String prenom;

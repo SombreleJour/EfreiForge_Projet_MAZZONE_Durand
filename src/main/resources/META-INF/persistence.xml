@@ -12,6 +12,7 @@
         <class>fr.efrei.java.Programmeur</class>
         <class>fr.efrei.java.Testeur</class>
         <class>fr.efrei.java.Adresse</class>
+        <class>fr.efrei.java.Equipe</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>
