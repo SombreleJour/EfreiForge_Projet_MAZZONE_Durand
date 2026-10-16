@@ -1,6 +1,5 @@
 package fr.efrei.java.model;
 
-import fr.efrei.java.Formateur;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;

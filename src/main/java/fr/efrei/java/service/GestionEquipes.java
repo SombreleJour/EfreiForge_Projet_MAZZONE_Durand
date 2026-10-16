@@ -1,6 +1,6 @@
 package fr.efrei.java.service;
 
-import fr.efrei.java.exeptions.*;
+import fr.efrei.java.exceptions.*;
 import fr.efrei.java.model.Collaborateur;
 import fr.efrei.java.model.Equipe;
 import jakarta.persistence.EntityManagerFactory;

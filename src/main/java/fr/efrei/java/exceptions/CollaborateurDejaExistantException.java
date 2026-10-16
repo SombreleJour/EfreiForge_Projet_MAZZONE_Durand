@@ -1,4 +1,4 @@
-package fr.efrei.java.exeptions;
+package fr.efrei.java.exceptions;
 
 /**
  * Règle métier violée : un collaborateur portant le même identifiant existe déjà.

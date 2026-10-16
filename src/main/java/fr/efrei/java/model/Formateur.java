@@ -1,4 +1,4 @@
-package fr.efrei.java;
+package fr.efrei.java.model;
 
 /**
  * Interface représentant la capacité à animer une formation.

@@ -1,6 +1,6 @@
 package fr.efrei.java;
 
-import fr.efrei.java.exeptions.*;
+import fr.efrei.java.exceptions.*;
 import fr.efrei.java.model.*;
 import fr.efrei.java.service.Annuaire;
 import fr.efrei.java.service.GestionEquipes;

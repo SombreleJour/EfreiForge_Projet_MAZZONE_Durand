@@ -1,4 +1,4 @@
-package fr.efrei.java.exeptions;
+package fr.efrei.java.exceptions;
 
 /**
  * Règle métier violée : une équipe ne peut être supprimée que si elle ne contient plus
