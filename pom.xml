@@ -43,16 +43,16 @@
     </dependencies>
 
     <build>
-        <plugins>
-            <!-- Permet de lancer l'application en ligne de commande : mvn compile exec:java -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.0</version>
-                <configuration>
-                    <mainClass>fr.efrei.java.HelloEfrei</mainClass>
-                </configuration>
-            </plugin>
-        </plugins>
+<!--        <plugins>-->
+<!--            &lt;!&ndash; Permet de lancer l'application en ligne de commande : mvn compile exec:java &ndash;&gt;-->
+<!--            <plugin>-->
+<!--                <groupId>org.codehaus.mojo</groupId>-->
+<!--                <artifactId>exec-maven-plugin</artifactId>-->
+<!--                <version>3.5.0</version>-->
+<!--                <configuration>-->
+<!--                    <mainClass>fr.efrei.java.HelloEfrei</mainClass>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
+<!--        </plugins>-->
     </build>
 </project>

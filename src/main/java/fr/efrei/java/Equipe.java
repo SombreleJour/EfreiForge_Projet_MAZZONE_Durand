@@ -1,8 +1,6 @@
 package fr.efrei.java;
 
 import jakarta.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -15,10 +13,6 @@ public class Equipe {
 
     @Column(nullable = false, unique = true, length = 50)
     private String nom;
-
-    // Relation un-à-plusieurs avec les collaborateurs
-    @OneToMany(mappedBy = "equipe")
-    private List<Collaborateur> membres = new ArrayList<>();
 
     protected Equipe() {
     }
@@ -33,10 +27,6 @@ public class Equipe {
 
     public String getNom() {
         return nom;
-    }
-
-    public List<Collaborateur> getMembres() {
-        return membres;
     }
 
     public void renommer(String nouveauNom) {

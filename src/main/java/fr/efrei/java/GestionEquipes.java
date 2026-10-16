@@ -42,6 +42,8 @@ public class GestionEquipes extends AccesJpa {
 
     /**
      * Renomme une équipe existante.
+     * Changer seulement la casse du nom de l'équipe elle-même est accepté ;
+     * le nom d'une AUTRE équipe est refusé.
      */
     public void renommer(String ancienNom, String nouveauNom) {
         if (nouveauNom == null || nouveauNom.trim().isEmpty()) {
@@ -57,7 +59,8 @@ public class GestionEquipes extends AccesJpa {
                     .findFirst()
                     .orElseThrow(() -> new EquipeIntrouvableException("Équipe introuvable : " + ancienNom));
 
-            if (rechercherParNom(nouvNomNormalise) != null) {
+            Equipe existante = rechercherParNom(nouvNomNormalise);
+            if (existante != null && !existante.getId().equals(equipe.getId())) {
                 throw new EquipeDejaExistanteException("Une équipe nommée '" + nouvNomNormalise + "' existe déjà.");
             }
 
@@ -78,8 +81,12 @@ public class GestionEquipes extends AccesJpa {
                     .findFirst()
                     .orElseThrow(() -> new EquipeIntrouvableException("Équipe introuvable : " + nom));
 
-            if (!equipe.getMembres().isEmpty()) {
-                throw new EquipeNonVideException("Impossible de supprimer l'équipe '" + nom + "' car elle contient des membres.");
+            long nombre = em.createQuery(
+                            "SELECT COUNT(c) FROM Collaborateur c WHERE c.equipe = :equipe", Long.class)
+                    .setParameter("equipe", equipe)
+                    .getSingleResult();
+            if (nombre > 0) {
+                throw new EquipeNonVideException(equipe.getNom(), nombre);
             }
 
             em.remove(em.contains(equipe) ? equipe : em.merge(equipe));
@@ -93,7 +100,7 @@ public class GestionEquipes extends AccesJpa {
         executer(em -> {
             Collaborateur collab = em.find(Collaborateur.class, idCollab);
             if (collab == null) {
-                throw new CollaborateurIntrouvableException("Collaborateur introuvable : " + idCollab);
+                throw new CollaborateurIntrouvableException(idCollab);
             }
 
             Equipe equipe = em.createQuery("SELECT e FROM Equipe e WHERE LOWER(e.nom) = LOWER(:nom)", Equipe.class)
@@ -119,7 +126,7 @@ public class GestionEquipes extends AccesJpa {
         executer(em -> {
             Collaborateur collab = em.find(Collaborateur.class, idCollab);
             if (collab == null) {
-                throw new CollaborateurIntrouvableException("Collaborateur introuvable : " + idCollab);
+                throw new CollaborateurIntrouvableException(idCollab);
             }
 
             Equipe equipe = em.createQuery("SELECT e FROM Equipe e WHERE LOWER(e.nom) = LOWER(:nom)", Equipe.class)
@@ -136,6 +143,7 @@ public class GestionEquipes extends AccesJpa {
 
     /**
      * Renvoie la liste des membres d'une équipe.
+     * Requête explicite : la liste est entièrement chargée avant la fermeture de l'EntityManager.
      */
     public List<Collaborateur> membres(String nomEquipe) {
         return lire(em -> {
@@ -145,7 +153,11 @@ public class GestionEquipes extends AccesJpa {
                     .stream()
                     .findFirst()
                     .orElseThrow(() -> new EquipeIntrouvableException("Équipe introuvable : " + nomEquipe));
-            return equipe.getMembres();
+            return em.createQuery(
+                            "SELECT c FROM Collaborateur c WHERE c.equipe = :equipe ORDER BY c.identifiant",
+                            Collaborateur.class)
+                    .setParameter("equipe", equipe)
+                    .getResultList();
         });
     }
 
