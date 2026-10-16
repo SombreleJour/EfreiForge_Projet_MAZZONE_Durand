@@ -1,11 +1,8 @@
 package fr.efrei.java;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -18,6 +15,10 @@ public class Equipe {
 
     @Column(nullable = false, unique = true, length = 50)
     private String nom;
+
+    // Relation un-à-plusieurs avec les collaborateurs
+    @OneToMany(mappedBy = "equipe")
+    private List<Collaborateur> membres = new ArrayList<>();
 
     protected Equipe() {
     }
@@ -34,6 +35,10 @@ public class Equipe {
         return nom;
     }
 
+    public List<Collaborateur> getMembres() {
+        return membres;
+    }
+
     public void renommer(String nouveauNom) {
         setNomNormalise(nouveauNom);
     }
@@ -44,6 +49,7 @@ public class Equipe {
         }
         this.nom = nom.trim();
     }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
