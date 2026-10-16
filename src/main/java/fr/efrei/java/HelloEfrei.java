@@ -28,8 +28,19 @@ public class HelloEfrei {
     /** Nom de la persistence unit déclarée dans persistence.xml. */
     private static final String UNITE_DE_PERSISTANCE = "efreiforge-unit";
 
+    /**
+     * Logger JUL de Hibernate, conservé dans un champ statique : sans référence forte,
+     * Java peut le supprimer de la mémoire et le niveau réglé ci-dessous serait perdu.
+     */
+    private static final java.util.logging.Logger LOGGER_HIBERNATE =
+            java.util.logging.Logger.getLogger("org.hibernate");
+
+    static {
+        // Exécuté au chargement de la classe, donc avant tout démarrage de Hibernate
+        LOGGER_HIBERNATE.setLevel(java.util.logging.Level.SEVERE);
+    }
+
     public static void main(String[] args) {
-        java.util.logging.Logger.getLogger("org.hibernate").setLevel(java.util.logging.Level.SEVERE);
         EntityManagerFactory fabrique = creerFabrique();
         if (fabrique == null) {
             return;
