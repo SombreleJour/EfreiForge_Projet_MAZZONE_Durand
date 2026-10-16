@@ -29,6 +29,7 @@ public class HelloEfrei {
     private static final String UNITE_DE_PERSISTANCE = "efreiforge-unit";
 
     public static void main(String[] args) {
+        java.util.logging.Logger.getLogger("org.hibernate").setLevel(java.util.logging.Level.SEVERE);
         EntityManagerFactory fabrique = creerFabrique();
         if (fabrique == null) {
             return;
