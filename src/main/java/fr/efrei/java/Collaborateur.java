@@ -102,22 +102,43 @@ public abstract class Collaborateur {
     }
 
     /**
-     * Affecte le collaborateur à une nouvelle équipe.
+     * Affecte le collaborateur à une équipe.
+     * Refusé s'il a déjà une équipe, y compris la même : il n'y a pas de déplacement implicite.
+     *
+     * @throws IllegalArgumentException    si l'équipe est absente
+     * @throws AffectationRefuseeException si le collaborateur a déjà une équipe
      */
     public void affecterA(Equipe nouvelleEquipe) {
         if (nouvelleEquipe == null) {
             throw new IllegalArgumentException("L'équipe ne peut pas être nulle.");
         }
+        if (this.equipe != null) {
+            throw new AffectationRefuseeException(identifiant + " appartient déjà à l'équipe « "
+                    + this.equipe.getNom() + " » : affectation refusée.");
+        }
         this.equipe = nouvelleEquipe;
     }
 
     /**
-     * Retire le collaborateur de son équipe actuelle.
+     * Retire le collaborateur de l'équipe indiquée.
+     * Refusé s'il n'a aucune équipe, ou s'il appartient à une autre équipe que celle indiquée.
+     *
+     * @throws IllegalArgumentException    si l'équipe est absente
+     * @throws AffectationRefuseeException si le collaborateur n'est pas dans cette équipe
      */
-    public void retirerDe(Equipe equipeActuelle) {
-        if (this.equipe != null && this.equipe.equals(equipeActuelle)) {
-            this.equipe = null;
+    public void retirerDe(Equipe uneEquipe) {
+        if (uneEquipe == null) {
+            throw new IllegalArgumentException("L'équipe ne peut pas être nulle.");
         }
+        if (this.equipe == null) {
+            throw new AffectationRefuseeException(identifiant
+                    + " n'appartient à aucune équipe : retrait refusé.");
+        }
+        if (!this.equipe.equals(uneEquipe)) {
+            throw new AffectationRefuseeException(identifiant + " appartient à l'équipe « "
+                    + this.equipe.getNom() + " » et non à « " + uneEquipe.getNom() + " » : retrait refusé.");
+        }
+        this.equipe = null;
     }
 
     // --- Méthodes métier ---
