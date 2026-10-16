@@ -1,5 +1,9 @@
-package fr.efrei.java;
+package fr.efrei.java.service;
 
+import fr.efrei.java.exeptions.CollaborateurDejaExistantException;
+import fr.efrei.java.exeptions.CollaborateurIntrouvableException;
+import fr.efrei.java.model.Collaborateur;
+import fr.efrei.java.model.Programmeur;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceException;
 import org.slf4j.Logger;

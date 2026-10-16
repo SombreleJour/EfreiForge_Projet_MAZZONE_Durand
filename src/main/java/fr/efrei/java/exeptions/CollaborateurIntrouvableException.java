@@ -1,4 +1,4 @@
-package fr.efrei.java;
+package fr.efrei.java.exeptions;
 
 /**
  * Règle métier violée : aucun collaborateur ne porte l'identifiant demandé.

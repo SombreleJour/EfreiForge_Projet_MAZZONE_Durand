@@ -1,5 +1,9 @@
 package fr.efrei.java;
 
+import fr.efrei.java.exeptions.*;
+import fr.efrei.java.model.*;
+import fr.efrei.java.service.Annuaire;
+import fr.efrei.java.service.GestionEquipes;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import jakarta.persistence.PersistenceException;
@@ -14,12 +18,6 @@ import java.util.Scanner;
 /**
  * Point d'entrée de l'application : interface console de l'annuaire des collaborateurs
  * et de la gestion des équipes.
- *
- * Cette classe ne contient aucun code JPA métier : elle crée la fabrique, valide le FORMAT
- * des saisies (nombre, identifiant au format C001...), puis délègue à Annuaire (collaborateurs)
- * ou à GestionEquipes (équipes et affectations).
- * Les règles métier sont protégées par le domaine (Collaborateur, Equipe) et par les services,
- * qui les signalent par des exceptions que l'on intercepte ici pour afficher un message.
  */
 public class HelloEfrei {
 
@@ -49,11 +47,7 @@ public class HelloEfrei {
     }
 
     /**
-     * Crée la fabrique JPA (une seule fois, elle est coûteuse).
-     * Si la base est inaccessible : message simple pour l'utilisateur,
-     * stack trace complète dans les logs pour le développeur.
-     *
-     * @return la fabrique, ou null si la connexion a échoué
+     * Crée la fabrique JPA.
      */
     private static EntityManagerFactory creerFabrique() {
         try {
@@ -67,10 +61,6 @@ public class HelloEfrei {
         }
     }
 
-    /**
-     * Les données de démonstration viennent du script SQL (sql/efreiforge.sql) :
-     * l'application n'en insère plus elle-même, pour n'avoir qu'une seule source de données.
-     */
     private static void avertirSiBaseVide(Annuaire annuaire) {
         if (annuaire.nombre() == 0) {
             System.out.println("La base ne contient aucun collaborateur. "
@@ -79,7 +69,7 @@ public class HelloEfrei {
     }
 
     // =========================================================================
-    // Menu
+    // Menu Principal et Aiguillage
     // =========================================================================
 
     private static void boucleMenu(Annuaire annuaire, GestionEquipes equipes, Scanner scanner) {
@@ -88,14 +78,13 @@ public class HelloEfrei {
         while (choix != 0) {
             afficherMenu();
 
-            // Fin de l'entrée standard (Ctrl+D) : on s'arrête proprement
             if (!scanner.hasNextLine()) {
                 return;
             }
 
             OptionalInt saisie = lireChoix(scanner);
             if (saisie.isEmpty()) {
-                continue; // message déjà affiché par lireChoix
+                continue;
             }
             choix = saisie.getAsInt();
 
@@ -103,10 +92,8 @@ public class HelloEfrei {
                 executerChoix(choix, annuaire, equipes, scanner);
             } catch (EquipeDejaExistanteException | EquipeIntrouvableException | EquipeNonVideException
                      | AffectationRefuseeException | CollaborateurIntrouvableException e) {
-                // Règle métier violée : l'opération est refusée et les données ne changent pas
                 System.out.println("Erreur : " + e.getMessage());
             } catch (IllegalArgumentException e) {
-                // Valeur refusée par le domaine (ex. : nom d'équipe vide)
                 System.out.println("Erreur : " + e.getMessage());
             } catch (PersistenceException e) {
                 logger.error("Erreur d'accès à la base de données", e);
@@ -118,30 +105,104 @@ public class HelloEfrei {
     private static void executerChoix(int choix, Annuaire annuaire, GestionEquipes equipes, Scanner scanner) {
         switch (choix) {
             case 0 -> System.out.println("À bientôt !");
-            case 1 -> afficherListe(annuaire.tous());
-            case 2 -> rechercherParNom(annuaire, scanner);
-            case 3 -> filtrerParSalaire(annuaire, scanner);
-            case 4 -> afficherListe(annuaire.programmeurs());
-            case 5 -> afficherListe(annuaire.triesParNom());
-            case 6 -> afficherListe(annuaire.triesParSalaire());
-            case 7 -> afficherListe(annuaire.triesParNomPuisPrenom());
-            case 8 -> afficherFiche(annuaire, scanner);
-            case 9 -> augmenterSalaire(annuaire, scanner);
-            case 10 -> ajouterCollaborateur(annuaire, scanner);
-            case 11 -> creerEquipe(equipes, scanner);
-            case 12 -> afficherEquipes(equipes);
-            case 13 -> affecterCollaborateur(equipes, scanner);
-            case 14 -> retirerCollaborateur(equipes, scanner);
-            case 15 -> afficherMembres(equipes, scanner);
-            case 16 -> renommerEquipe(equipes, scanner);
-            case 17 -> supprimerEquipe(equipes, scanner);
-            case 18 -> afficherSansEquipe(equipes);
-            default -> System.out.println("Option invalide. Choisissez entre 0 et 18.");
+            case 1 -> menuCollaborateurs(annuaire, scanner);
+            case 2 -> menuEquipes(equipes, scanner);
+            default -> System.out.println("Option invalide. Choisissez entre 0 et 2.");
         }
     }
 
     // =========================================================================
-    // Collaborateurs (menu 1 à 10)
+    // SOUS-MENU : COLLABORATEURS
+    // =========================================================================
+
+    private static void menuCollaborateurs(Annuaire annuaire, Scanner scanner) {
+        int choix = -1;
+        while (choix != 0) {
+            System.out.println();
+            System.out.println("--- GESTION DES COLLABORATEURS ---");
+            System.out.println("1. Afficher tous les collaborateurs");
+            System.out.println("2. Rechercher par nom");
+            System.out.println("3. Filtrer par salaire minimum");
+            System.out.println("4. Afficher les programmeurs");
+            System.out.println("5. Trier par nom");
+            System.out.println("6. Trier par salaire");
+            System.out.println("7. Trier par nom puis prénom");
+            System.out.println("8. Afficher la fiche d'un collaborateur");
+            System.out.println("9. Augmenter le salaire d'un collaborateur");
+            System.out.println("10. Ajouter un collaborateur");
+            System.out.println("0. Retour au menu principal");
+            System.out.print("Votre choix : ");
+
+            OptionalInt saisie = lireChoix(scanner);
+            if (saisie.isEmpty()) continue;
+            choix = saisie.getAsInt();
+
+            try {
+                switch (choix) {
+                    case 0 -> System.out.println("Retour au menu principal...");
+                    case 1 -> afficherListe(annuaire.tous());
+                    case 2 -> rechercherParNom(annuaire, scanner);
+                    case 3 -> filtrerParSalaire(annuaire, scanner);
+                    case 4 -> afficherListe(annuaire.programmeurs());
+                    case 5 -> afficherListe(annuaire.triesParNom());
+                    case 6 -> afficherListe(annuaire.triesParSalaire());
+                    case 7 -> afficherListe(annuaire.triesParNomPuisPrenom());
+                    case 8 -> afficherFiche(annuaire, scanner);
+                    case 9 -> augmenterSalaire(annuaire, scanner);
+                    case 10 -> ajouterCollaborateur(annuaire, scanner);
+                    default -> System.out.println("Option invalide entre 0 et 10.");
+                }
+            } catch (Exception e) {
+                System.out.println("Erreur : " + e.getMessage());
+            }
+        }
+    }
+
+    // =========================================================================
+    // SOUS-MENU : ÉQUIPES
+    // =========================================================================
+
+    private static void menuEquipes(GestionEquipes equipes, Scanner scanner) {
+        int choix = -1;
+        while (choix != 0) {
+            System.out.println();
+            System.out.println("--- GESTION DES ÉQUIPES ---");
+            System.out.println("1. Créer une équipe");
+            System.out.println("2. Afficher les équipes");
+            System.out.println("3. Affecter un collaborateur à une équipe");
+            System.out.println("4. Retirer un collaborateur d'une équipe");
+            System.out.println("5. Afficher les collaborateurs d'une équipe");
+            System.out.println("6. Renommer une équipe");
+            System.out.println("7. Supprimer une équipe");
+            System.out.println("8. Afficher les collaborateurs sans équipe");
+            System.out.println("0. Retour au menu principal");
+            System.out.print("Votre choix : ");
+
+            OptionalInt saisie = lireChoix(scanner);
+            if (saisie.isEmpty()) continue;
+            choix = saisie.getAsInt();
+
+            try {
+                switch (choix) {
+                    case 0 -> System.out.println("Retour au menu principal...");
+                    case 1 -> creerEquipe(equipes, scanner);
+                    case 2 -> afficherEquipes(equipes);
+                    case 3 -> affecterCollaborateur(equipes, scanner);
+                    case 4 -> retirerCollaborateur(equipes, scanner);
+                    case 5 -> afficherMembres(equipes, scanner);
+                    case 6 -> renommerEquipe(equipes, scanner);
+                    case 7 -> supprimerEquipe(equipes, scanner);
+                    case 8 -> afficherSansEquipe(equipes);
+                    default -> System.out.println("Option invalide entre 0 et 8.");
+                }
+            } catch (Exception e) {
+                System.out.println("Erreur : " + e.getMessage());
+            }
+        }
+    }
+
+    // =========================================================================
+    // Méthodes Collaborateurs
     // =========================================================================
 
     private static void rechercherParNom(Annuaire annuaire, Scanner scanner) {
@@ -157,7 +218,6 @@ public class HelloEfrei {
         try {
             afficherListe(annuaire.salaireAuMoins(minimum.getAsDouble()));
         } catch (IllegalArgumentException e) {
-            // Règle métier violée (salaire négatif) : message de l'exception
             System.out.println("Erreur : " + e.getMessage());
         }
     }
@@ -204,7 +264,6 @@ public class HelloEfrei {
             return;
         }
 
-        // Erreur de saisie (format) : traitée ici, avant d'appeler la logique métier
         String identifiant = lireTexte(scanner, "Identifiant (format C001) : ").toUpperCase();
         if (!identifiant.matches("C\\d{3}")) {
             System.out.println("Identifiant invalide : le format attendu est C suivi de 3 chiffres.");
@@ -235,22 +294,16 @@ public class HelloEfrei {
             System.out.println("Erreur : l'identifiant " + e.identifiant()
                     + " est déjà utilisé. Aucun collaborateur n'a été ajouté.");
         } catch (IllegalArgumentException e) {
-            // Règle métier violée dans le constructeur (ex. : salaire négatif)
             System.out.println("Erreur : " + e.getMessage());
         }
     }
 
     // =========================================================================
-    // Équipes (menu 11 à 18)
-    //
-    // Chaque méthode ne fait que : lire les saisies, appeler GestionEquipes, afficher le résultat.
-    // Les refus (exceptions) remontent jusqu'à boucleMenu, qui affiche le message.
-    // Quand un nom d'équipe est demandé, la liste des équipes existantes est affichée d'abord.
+    // Méthodes Équipes
     // =========================================================================
 
     private static void creerEquipe(GestionEquipes equipes, Scanner scanner) {
         afficherEquipes(equipes);
-        // lireLigne (et non lireTexte) : un nom vide doit atteindre le domaine, qui le refuse
         String nom = lireLigne(scanner, "Nom de la nouvelle équipe : ");
         Equipe creee = equipes.creer(nom);
         System.out.println("Équipe « " + creee.getNom() + " » créée.");
@@ -279,8 +332,6 @@ public class HelloEfrei {
 
     private static void retirerCollaborateur(GestionEquipes equipes, Scanner scanner) {
         afficherEquipes(equipes);
-        // Le collaborateur ET l'équipe sont demandés : le retrait n'est accepté
-        // que si le collaborateur appartient bien à l'équipe indiquée.
         String identifiant = lireTexte(scanner, "Identifiant du collaborateur : ").toUpperCase();
         String nomEquipe = lireTexte(scanner, "Équipe dont le retirer : ");
         equipes.retirer(identifiant, nomEquipe);
@@ -301,7 +352,6 @@ public class HelloEfrei {
     private static void renommerEquipe(GestionEquipes equipes, Scanner scanner) {
         afficherEquipes(equipes);
         String ancienNom = lireTexte(scanner, "Nom de l'équipe à renommer : ");
-        // lireLigne : un nouveau nom vide doit atteindre le domaine, qui le refuse
         String nouveauNom = lireLigne(scanner, "Nouveau nom : ");
         equipes.renommer(ancienNom, nouveauNom);
         System.out.println("Équipe « " + ancienNom + " » renommée en « " + nouveauNom.trim() + " ».");
@@ -324,10 +374,9 @@ public class HelloEfrei {
     }
 
     // =========================================================================
-    // Lecture des saisies (toujours par lignes entières : pas de piège de Scanner)
+    // Lecture des saisies
     // =========================================================================
 
-    /** Lit le choix du menu. Affiche un message et renvoie vide si la saisie n'est pas un entier. */
     private static OptionalInt lireChoix(Scanner scanner) {
         String saisie = scanner.nextLine().trim();
         try {
@@ -338,26 +387,21 @@ public class HelloEfrei {
         }
     }
 
-    /**
-     * Lit un nombre décimal. Accepte le point ET la virgule (clavier français).
-     * Affiche un message et renvoie vide si la saisie n'est pas un nombre.
-     */
     private static OptionalDouble lireNombre(Scanner scanner, String invite) {
         System.out.print(invite);
         String saisie = scanner.nextLine().trim().replace(',', '.');
         try {
             double valeur = Double.parseDouble(saisie);
-            if (Double.isFinite(valeur)) { // refuse "NaN" et "Infinity", que parseDouble accepte
+            if (Double.isFinite(valeur)) {
                 return OptionalDouble.of(valeur);
             }
         } catch (NumberFormatException e) {
-            // traité comme une saisie invalide, juste en dessous
+            // Ignoré, géré par le message en dessous
         }
         System.out.println("Saisie invalide. Veuillez entrer un nombre.");
         return OptionalDouble.empty();
     }
 
-    /** Lit un texte non vide : redemande tant que la saisie est vide. */
     private static String lireTexte(Scanner scanner, String invite) {
         String saisie;
         do {
@@ -370,45 +414,24 @@ public class HelloEfrei {
         return saisie;
     }
 
-    /**
-     * Lit une ligne telle quelle, sans la redemander si elle est vide.
-     * La validation (nom vide, espaces...) est faite par la règle métier, pas ici.
-     */
     private static String lireLigne(Scanner scanner, String invite) {
         System.out.print(invite);
         return scanner.nextLine();
     }
 
     // =========================================================================
-    // Affichage
+    // Affichage des menus et listes
     // =========================================================================
 
     private static void afficherMenu() {
         System.out.println();
-        System.out.println("=== Annuaire des collaborateurs (EFREI) ===");
-        System.out.println("1. Afficher tous les collaborateurs");
-        System.out.println("2. Rechercher par nom");
-        System.out.println("3. Filtrer par salaire minimum");
-        System.out.println("4. Afficher les programmeurs");
-        System.out.println("5. Trier par nom");
-        System.out.println("6. Trier par salaire");
-        System.out.println("7. Trier par nom puis prénom");
-        System.out.println("8. Afficher la fiche d'un collaborateur");
-        System.out.println("9. Augmenter le salaire d'un collaborateur");
-        System.out.println("10. Ajouter un collaborateur");
-        System.out.println("11. Créer une équipe");
-        System.out.println("12. Afficher les équipes");
-        System.out.println("13. Affecter un collaborateur à une équipe");
-        System.out.println("14. Retirer un collaborateur d'une équipe");
-        System.out.println("15. Afficher les collaborateurs d'une équipe");
-        System.out.println("16. Renommer une équipe");
-        System.out.println("17. Supprimer une équipe");
-        System.out.println("18. Afficher les collaborateurs sans équipe");
+        System.out.println("=== Annuaire des collaborateurs & Équipes (EFREI) ===");
+        System.out.println("1. Gestion des Collaborateurs");
+        System.out.println("2. Gestion des Équipes");
         System.out.println("0. Quitter");
         System.out.print("Votre choix : ");
     }
 
-    /** Affiche une liste de collaborateurs. */
     private static void afficherListe(List<? extends Collaborateur> liste) {
         if (liste.isEmpty()) {
             System.out.println("Aucun collaborateur trouvé.");
@@ -420,7 +443,6 @@ public class HelloEfrei {
         }
     }
 
-    /** Affiche une liste de collaborateurs avec leur métier, sous un titre (équipe, disponibles...). */
     private static void afficherCollaborateursEtMetier(String titre, List<? extends Collaborateur> liste) {
         System.out.println(titre + " (" + liste.size() + ") :");
         for (Collaborateur c : liste) {

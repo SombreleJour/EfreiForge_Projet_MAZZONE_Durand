@@ -8,11 +8,11 @@
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <!-- Une ligne par entité -->
-        <class>fr.efrei.java.Collaborateur</class>
-        <class>fr.efrei.java.Programmeur</class>
-        <class>fr.efrei.java.Testeur</class>
-        <class>fr.efrei.java.Adresse</class>
-        <class>fr.efrei.java.Equipe</class>
+        <class>fr.efrei.java.model.Collaborateur</class>
+        <class>fr.efrei.java.model.Programmeur</class>
+        <class>fr.efrei.java.model.Testeur</class>
+        <class>fr.efrei.java.model.Adresse</class>
+        <class>fr.efrei.java.model.Equipe</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>

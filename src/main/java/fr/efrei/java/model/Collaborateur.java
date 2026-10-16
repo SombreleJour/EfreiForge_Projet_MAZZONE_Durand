@@ -1,5 +1,6 @@
-package fr.efrei.java;
+package fr.efrei.java.model;
 
+import fr.efrei.java.exeptions.AffectationRefuseeException;
 import jakarta.persistence.*;
 
 import java.util.Objects;

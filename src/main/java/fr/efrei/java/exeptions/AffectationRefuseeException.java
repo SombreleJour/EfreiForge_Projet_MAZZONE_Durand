@@ -1,4 +1,4 @@
-package fr.efrei.java;
+package fr.efrei.java.exeptions;
 
 /**
  * Règle métier violée lors d'une affectation ou d'un retrait :

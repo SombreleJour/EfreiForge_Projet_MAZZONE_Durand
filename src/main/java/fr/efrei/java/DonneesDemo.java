@@ -1,5 +1,10 @@
 package fr.efrei.java;
 
+import fr.efrei.java.model.Adresse;
+import fr.efrei.java.model.Collaborateur;
+import fr.efrei.java.model.Programmeur;
+import fr.efrei.java.model.Testeur;
+
 import java.util.ArrayList;
 import java.util.List;
 
