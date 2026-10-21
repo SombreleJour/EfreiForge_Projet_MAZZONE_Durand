@@ -185,7 +185,7 @@ public class HelloEfrei {
             System.out.println("2. Afficher les équipes");
             System.out.println("3. Affecter un collaborateur à une équipe");
             System.out.println("4. Retirer un collaborateur d'une équipe");
-            System.out.println("5. Afficher les collaborateurs d'une équipe");
+            System.out.println("5. Afficher une équipe");
             System.out.println("6. Renommer une équipe");
             System.out.println("7. Supprimer une équipe");
             System.out.println("8. Afficher les collaborateurs sans équipe");
