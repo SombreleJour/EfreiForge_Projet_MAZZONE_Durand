@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.Scanner;
@@ -49,9 +50,12 @@ public class HelloEfrei {
             GestionEquipes equipes = new GestionEquipes(fabrique);
             avertirSiBaseVide(annuaire);
             boucleMenu(annuaire, equipes, scanner);
+        } catch (NoSuchElementException e) {
+            // Fin de la saisie (Ctrl+D) : plus rien à lire, on quitte proprement
+            System.out.println();
+            System.out.println("Fin de la saisie. À bientôt !");
         } catch (PersistenceException e) {
-            logger.error("Erreur d'accès à la base de données au démarrage", e);
-            System.out.println("Erreur d'accès à la base de données. Consultez les logs pour le détail.");
+            signalerErreurBase(e);
         } finally {
             fabrique.close();
         }
@@ -72,6 +76,16 @@ public class HelloEfrei {
         }
     }
 
+    /**
+     * Erreur technique d'accès à la base : le détail part dans le fichier de logs,
+     * l'utilisateur reçoit un message simple.
+     */
+    private static void signalerErreurBase(PersistenceException e) {
+        logger.error("Erreur d'accès à la base de données", e);
+        System.out.println("Erreur d'accès à la base de données. "
+                + "Consultez le fichier efreiforge.log pour le détail.");
+    }
+
     private static void avertirSiBaseVide(Annuaire annuaire) {
         if (annuaire.nombre() == 0) {
             System.out.println("La base ne contient aucun collaborateur. "
@@ -89,27 +103,14 @@ public class HelloEfrei {
         while (choix != 0) {
             afficherMenu();
 
-            if (!scanner.hasNextLine()) {
-                return;
-            }
-
             OptionalInt saisie = lireChoix(scanner);
             if (saisie.isEmpty()) {
                 continue;
             }
             choix = saisie.getAsInt();
 
-            try {
-                executerChoix(choix, annuaire, equipes, scanner);
-            } catch (EquipeDejaExistanteException | EquipeIntrouvableException | EquipeNonVideException
-                     | AffectationRefuseeException | CollaborateurIntrouvableException e) {
-                System.out.println("Erreur : " + e.getMessage());
-            } catch (IllegalArgumentException e) {
-                System.out.println("Erreur : " + e.getMessage());
-            } catch (PersistenceException e) {
-                logger.error("Erreur d'accès à la base de données", e);
-                System.out.println("Erreur d'accès à la base de données. Consultez les logs pour le détail.");
-            }
+            // Les erreurs sont traitées dans chaque sous-menu
+            executerChoix(choix, annuaire, equipes, scanner);
         }
     }
 
@@ -163,8 +164,10 @@ public class HelloEfrei {
                     case 10 -> ajouterCollaborateur(annuaire, scanner);
                     default -> System.out.println("Option invalide entre 0 et 10.");
                 }
-            } catch (Exception e) {
+            } catch (IllegalArgumentException | CollaborateurIntrouvableException e) {
                 System.out.println("Erreur : " + e.getMessage());
+            } catch (PersistenceException e) {
+                signalerErreurBase(e);
             }
         }
     }
@@ -206,8 +209,12 @@ public class HelloEfrei {
                     case 8 -> afficherSansEquipe(equipes);
                     default -> System.out.println("Option invalide entre 0 et 8.");
                 }
-            } catch (Exception e) {
+            } catch (EquipeDejaExistanteException | EquipeIntrouvableException | EquipeNonVideException
+                     | AffectationRefuseeException | CollaborateurIntrouvableException
+                     | IllegalArgumentException e) {
                 System.out.println("Erreur : " + e.getMessage());
+            } catch (PersistenceException e) {
+                signalerErreurBase(e);
             }
         }
     }
@@ -328,51 +335,55 @@ public class HelloEfrei {
         }
         System.out.println("Équipes existantes (" + liste.size() + ") :");
         for (Equipe equipe : liste) {
-            int nombre = equipes.membres(equipe.getNom()).size();
+            long nombre = equipes.nombreMembres(equipe);
             System.out.println("  " + equipe.getNom() + " - " + nombre + " collaborateur(s)");
         }
     }
+
+    // Les messages de succès affichent le nom réel de l'équipe (getNom()),
+    // et non la saisie de l'utilisateur, dont la casse peut être différente.
 
     private static void affecterCollaborateur(GestionEquipes equipes, Scanner scanner) {
         afficherEquipes(equipes);
         String identifiant = lireTexte(scanner, "Identifiant du collaborateur : ").toUpperCase();
         String nomEquipe = lireTexte(scanner, "Nom de l'équipe : ");
-        equipes.affecter(identifiant, nomEquipe);
-        System.out.println(identifiant + " a été affecté à l'équipe « " + nomEquipe + " ».");
+        Equipe equipe = equipes.affecter(identifiant, nomEquipe);
+        System.out.println(identifiant + " a été affecté à l'équipe « " + equipe.getNom() + " ».");
     }
 
     private static void retirerCollaborateur(GestionEquipes equipes, Scanner scanner) {
         afficherEquipes(equipes);
         String identifiant = lireTexte(scanner, "Identifiant du collaborateur : ").toUpperCase();
         String nomEquipe = lireTexte(scanner, "Équipe dont le retirer : ");
-        equipes.retirer(identifiant, nomEquipe);
-        System.out.println(identifiant + " a été retiré de l'équipe « " + nomEquipe + " ».");
+        Equipe equipe = equipes.retirer(identifiant, nomEquipe);
+        System.out.println(identifiant + " a été retiré de l'équipe « " + equipe.getNom() + " ».");
     }
 
     private static void afficherMembres(GestionEquipes equipes, Scanner scanner) {
         afficherEquipes(equipes);
-        String nomEquipe = lireTexte(scanner, "Nom de l'équipe : ");
-        List<Collaborateur> membres = equipes.membres(nomEquipe);
+        Equipe equipe = equipes.trouver(lireTexte(scanner, "Nom de l'équipe : "));
+        List<Collaborateur> membres = equipes.membres(equipe);
         if (membres.isEmpty()) {
-            System.out.println("L'équipe « " + nomEquipe + " » ne contient aucun collaborateur.");
+            System.out.println("L'équipe « " + equipe.getNom() + " » ne contient aucun collaborateur.");
             return;
         }
-        afficherCollaborateursEtMetier("Équipe « " + nomEquipe + " »", membres);
+        afficherCollaborateursEtMetier("Équipe « " + equipe.getNom() + " »", membres);
     }
 
     private static void renommerEquipe(GestionEquipes equipes, Scanner scanner) {
         afficherEquipes(equipes);
-        String ancienNom = lireTexte(scanner, "Nom de l'équipe à renommer : ");
+        // On vérifie que l'équipe existe avant de demander le nouveau nom
+        Equipe equipe = equipes.trouver(lireTexte(scanner, "Nom de l'équipe à renommer : "));
         String nouveauNom = lireLigne(scanner, "Nouveau nom : ");
-        equipes.renommer(ancienNom, nouveauNom);
-        System.out.println("Équipe « " + ancienNom + " » renommée en « " + nouveauNom.trim() + " ».");
+        Equipe renommee = equipes.renommer(equipe.getNom(), nouveauNom);
+        System.out.println("Équipe « " + equipe.getNom() + " » renommée en « " + renommee.getNom() + " ».");
     }
 
     private static void supprimerEquipe(GestionEquipes equipes, Scanner scanner) {
         afficherEquipes(equipes);
         String nomEquipe = lireTexte(scanner, "Nom de l'équipe à supprimer : ");
-        equipes.supprimer(nomEquipe);
-        System.out.println("Équipe « " + nomEquipe + " » supprimée.");
+        Equipe supprimee = equipes.supprimer(nomEquipe);
+        System.out.println("Équipe « " + supprimee.getNom() + " » supprimée.");
     }
 
     private static void afficherSansEquipe(GestionEquipes equipes) {
