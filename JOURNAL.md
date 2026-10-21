@@ -1,6 +1,7 @@
 # Journal de bord — EFREIForge
 
 Projet Java LSI1 —  MAZZONE Milo / DURAND Tom
+https://github.com/SombreleJour/EfreiForge_Projet_MAZZONE_Durand.git
 
 ## 1. Démarche
 ---
